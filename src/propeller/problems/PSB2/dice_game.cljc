@@ -3,7 +3,7 @@
             [propeller.genome :as genome]
             [propeller.push.interpreter :as interpreter]
             [propeller.utils :as utils]
-            [propeller.push.utils.helpers :refer [get-stack-instructions]]
+            [propeller.push.instructions :refer [get-stack-instructions]]
             [propeller.push.state :as state]
             [propeller.tools.math :as math]
             [propeller.gp :as gp]
@@ -59,7 +59,7 @@
         errors (map (fn [correct-output output]
                       (if (= output :no-stack-item)
                         1000000.0
-                        (min 1000.0 (math/abs (- correct-output output)))))
+                        (math/abs (- correct-output output))))
                     correct-outputs
                     outputs)]
     (assoc individual
@@ -86,4 +86,5 @@
        :umad-rate               0.1
        :variation               {:umad 1.0 :crossover 0.0}
        :elitism                 false}
-      (apply hash-map (map #(if (string? %) (read-string %) %) args)))))
+      (apply hash-map (map #(if (string? %) (read-string %) %) args))))
+  (#?(:clj shutdown-agents)))

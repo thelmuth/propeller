@@ -1,13 +1,10 @@
 (ns propeller.push.instructions.polymorphic
-  #?(:cljs (:require-macros
-             [propeller.push.utils.macros :refer [def-instruction
-                                                  generate-instructions]]))
   (:require [propeller.utils :as utils]
             [propeller.push.state :as state]
-            [propeller.push.utils.helpers :refer [make-instruction]]
-            [propeller.push.utils.globals :as globals]
-            #?(:clj [propeller.push.utils.macros :refer [def-instruction
-                                                         generate-instructions]])))
+            [propeller.push.limits :as limit]
+            [propeller.push.instructions :refer [def-instruction
+                                                 generate-instructions
+                                                 make-instruction]]))
 
 ;; =============================================================================
 ;; Polymorphic Instructions
@@ -42,7 +39,7 @@
                  (not (state/empty-stack? state :integer))
                  (not (state/empty-stack? state stack))))
       (let [n (min (state/peek-stack state :integer)
-                   (inc (- globals/max-stack-items (state/stack-size state stack))))
+                   (inc (- limit/max-stack-items (state/stack-size state stack))))
             popped-state (state/pop-stack state :integer)
             top-item (state/peek-stack popped-state stack)
             top-item-dup (take (- n 1) (repeat top-item))]
@@ -62,7 +59,7 @@
     (if (state/empty-stack? state :integer)
       state
       (let [n (min (state/peek-stack state :integer)
-                   (- globals/max-stack-items (state/stack-size state stack)))
+                   (- limit/max-stack-items (state/stack-size state stack)))
             popped-state (state/pop-stack state :integer)
             top-items (take n (get popped-state stack))]
         (state/push-to-stack-many popped-state stack top-items)))))
@@ -201,7 +198,7 @@
                  (not (state/empty-stack? state stack))))
       (let [index-raw (state/peek-stack state :integer)
             popped-state (state/pop-stack state :integer)
-            index (max 0 (min index-raw (dec (count (get popped-state stack)))))
+            index (max 0 (min index-raw (dec (state/stack-size popped-state stack))))
             indexed-item (nth (reverse (get popped-state stack)) index)]
         (state/push-to-stack popped-state stack indexed-item))
       state)))

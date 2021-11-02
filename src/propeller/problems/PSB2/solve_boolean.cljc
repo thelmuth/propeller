@@ -3,7 +3,7 @@
             [propeller.genome :as genome]
             [propeller.push.interpreter :as interpreter]
             [propeller.utils :as utils]
-            [propeller.push.utils.helpers :refer [get-stack-instructions]]
+            [propeller.push.instructions :refer [get-stack-instructions]]
             [propeller.push.state :as state]
             [propeller.gp :as gp]
             #?(:cljs [cljs.reader :refer [read-string]])))
@@ -81,4 +81,5 @@
        :umad-rate               0.1
        :variation               {:umad 1.0 :crossover 0.0}
        :elitism                 false}
-      (apply hash-map (map #(if (string? %) (read-string %) %) args)))))
+      (apply hash-map (map #(if (string? %) (read-string %) %) args))))
+  (#?(:clj shutdown-agents)))

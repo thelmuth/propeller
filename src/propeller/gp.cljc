@@ -55,7 +55,11 @@
 (defn gp
   "Main GP loop."
   [{:keys [population-size max-generations error-function instructions
-           max-initial-plushy-size random-inputs-for-generalizability]
+           max-initial-plushy-size solution-error-threshold random-inputs-for-generalizability mapper]
+    :or   {solution-error-threshold 0.0
+           ;; The `mapper` will perform a `map`-like operation to apply a function to every individual
+           ;; in the population. The default is `map` but other options include `mapv`, or `pmap`.
+           mapper #?(:clj pmap :cljs map)}
     :as   argmap}]
   ;;
   (prn {:starting-args (update (update argmap :error-function str) :instructions str)})
@@ -71,8 +75,7 @@
                      {:plushy seed-solution})
          struct-solutions {}]
     (let [evaluated-pop (sort-by :total-error
-                                 (#?(:clj  pmap
-                                     :cljs map)
+                                 (mapper
                                    (partial error-function argmap (:training-data argmap))
                                    population))
           best-individual (first evaluated-pop)
@@ -85,12 +88,11 @@
       (prn "Struct Solutions Map:" struct-solutions)
       (cond
         ;; Success on training cases is verified on testing cases
-         ;(zero? (:total-error best-individual))
-        false ;; This is to make it so we don't stop when finding a solution
+        ; (<= (:total-error best-individual) solution-error-threshold)
+                false ;; This is to make it so we don't stop when finding a solution
         (do (prn {:success-generation generation})
             (prn {:total-test-error
-                  (:total-error (error-function argmap (:testing-data argmap) best-individual))})
-            (#?(:clj shutdown-agents)))
+                  (:total-error (error-function argmap (:testing-data argmap) best-individual))}))
         ;;
         (>= generation max-generations)
         nil

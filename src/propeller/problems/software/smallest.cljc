@@ -2,9 +2,8 @@
   (:require [propeller.genome :as genome]
             [propeller.push.interpreter :as interpreter]
             [propeller.push.state :as state]
-            [propeller.push.utils.helpers :refer [get-stack-instructions]]
+            [propeller.push.instructions :refer [get-stack-instructions]]
             [propeller.utils :as utils]
-            [propeller.push.state :as state]
             [propeller.gp :as gp]
             #?(:cljs [cljs.reader :refer [read-string]])))
 
@@ -80,10 +79,7 @@
                          :print))
                      inputs)
         errors (map (fn [correct-output output]
-                      (let [parsed-output (try (read-string output)
-                                               #?(:clj  (catch Exception e 1000.0)
-                                                  :cljs (catch js/Error. e 1000.0)))]
-                        (if (= correct-output parsed-output) 0 1)))
+                      (if (= (str correct-output) output) 0 1))
                     correct-outputs
                     outputs)]
     (assoc individual
@@ -103,8 +99,8 @@
        :testing-data            (:test train-and-test-data)
        :random-inputs-for-generalizability (vec (repeatedly 500 #(vector (random-int) (random-int)
                                                                          (random-int) (random-int))))
-       :max-generations         500
-       :population-size         500
+       :max-generations         300
+       :population-size         1000
        :max-initial-plushy-size 100
        :step-limit              200
        :parent-selection        :lexicase
@@ -112,7 +108,8 @@
        :umad-rate               0.1
        :variation               {:umad 0.5 :crossover 0.5}
        :elitism                 false}
-      (apply hash-map (map #(if (string? %) (read-string %) %) args)))))
+      (apply hash-map (map #(if (string? %) (read-string %) %) args))))
+  (#?(:clj shutdown-agents)))
 
 (comment
 
