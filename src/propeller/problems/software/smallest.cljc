@@ -101,6 +101,8 @@
        :error-function          error-function
        :training-data           (:train train-and-test-data)
        :testing-data            (:test train-and-test-data)
+       :random-inputs-for-generalizability (vec (repeatedly 500 #(vector (random-int) (random-int)
+                                                                         (random-int) (random-int))))
        :max-generations         500
        :population-size         500
        :max-initial-plushy-size 100
@@ -111,3 +113,12 @@
        :variation               {:umad 0.5 :crossover 0.5}
        :elitism                 false}
       (apply hash-map (map #(if (string? %) (read-string %) %) args)))))
+
+(comment
+
+  (let [prog '(5 6 :integer_add :exec_dup (7 :integer_inc) :integer_mult)]
+    (hash prog))
+  
+  ()
+
+  )

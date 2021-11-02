@@ -28,33 +28,65 @@
                             :average-total-error   (float (/ (reduce + (map :total-error pop)) (count pop)))})
     (println)))
 
+(defn track-solutions
+  "Track all solutions we've found so far.
+   struct-solutions is a map where the keys are the hash values of solution
+   programs, and the values are how many times we've seen them so far."
+  [inputs population struct-solutions]
+  (let [solutions (filter #(zero? (:total-error %)) population)]
+    (loop [solutions solutions
+           structs struct-solutions]
+      (if (empty? solutions)
+        structs
+        (let [push-prog (genome/plushy->push (:plushy (first solutions)))
+              prog-hash (hash push-prog)
+              behavior ((partial error-function argmap 
+                                 inputs) (first solutions))
+              
+              ]
+          (recur (rest solutions)
+                 (if (get structs prog-hash)
+                   (update structs prog-hash inc)
+                   (assoc structs prog-hash 1))))))))
+
+(def seed-solution
+  '(:in1 :in2 :in3 :in4 :integer_min :integer_min :integer_min :integer_print))
+
 (defn gp
   "Main GP loop."
   [{:keys [population-size max-generations error-function instructions
-           max-initial-plushy-size]
+           max-initial-plushy-size random-inputs-for-generalizability]
     :as   argmap}]
   ;;
   (prn {:starting-args (update (update argmap :error-function str) :instructions str)})
   (println)
   ;;
   (loop [generation 0
-         population (repeatedly
-                      population-size
-                      #(hash-map :plushy (genome/make-random-plushy
-                                           instructions
-                                           max-initial-plushy-size)))]
+         population (conj
+                     (repeatedly
+                           (dec population-size)
+                           #(hash-map :plushy (genome/make-random-plushy
+                                               instructions
+                                               max-initial-plushy-size)))
+                     {:plushy seed-solution})
+         struct-solutions {}]
     (let [evaluated-pop (sort-by :total-error
                                  (#?(:clj  pmap
                                      :cljs map)
                                    (partial error-function argmap (:training-data argmap))
                                    population))
-          best-individual (first evaluated-pop)]
+          best-individual (first evaluated-pop)
+          struct-solutions (track-solutions random-inputs-for-generalizability
+                                            evaluated-pop 
+                                            struct-solutions)]
       (if (:custom-report argmap)
         ((:custom-report argmap) evaluated-pop generation argmap)
         (report evaluated-pop generation argmap))
+      (prn "Struct Solutions Map:" struct-solutions)
       (cond
         ;; Success on training cases is verified on testing cases
-        (zero? (:total-error best-individual))
+         ;(zero? (:total-error best-individual))
+        false ;; This is to make it so we don't stop when finding a solution
         (do (prn {:success-generation generation})
             (prn {:total-test-error
                   (:total-error (error-function argmap (:testing-data argmap) best-individual))})
@@ -69,4 +101,5 @@
                                          #(variation/new-individual evaluated-pop argmap))
                              (first evaluated-pop))
                        (repeatedly population-size
-                                   #(variation/new-individual evaluated-pop argmap))))))))
+                                   #(variation/new-individual evaluated-pop argmap)))
+                     struct-solutions)))))
