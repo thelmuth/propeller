@@ -1,7 +1,6 @@
 (ns propeller.gp
   "Main genetic programming loop."
   (:require [clojure.string]
-            [clojure.pprint]
             [propeller.genome :as genome]
             [propeller.simplification :as simplification]
             [propeller.variation :as variation]
@@ -24,20 +23,21 @@
   (doseq [ind pop]
     (prn (select-keys ind [:id :parent :errors])))
   (let [best (first pop)]
-    (clojure.pprint/pprint
+    (utils/pretty-map-println
      {:generation            generation
       :best-plushy           (:plushy best)
       :best-program          (genome/plushy->push (:plushy best) argmap)
       :best-total-error      (:total-error best)
       :evaluations           evaluations
-      :ds-indices            (map #(:index %) training-data)
+      :ds-indices            (if (:downsample? argmap)
+                              (map #(:index %) training-data)
+                               nil)
       :best-errors           (:errors best)
       :best-behaviors        (:behaviors best)
       :genotypic-diversity   (float (/ (count (distinct (map :plushy pop))) (count pop)))
       :behavioral-diversity  (float (/ (count (distinct (map :behaviors pop))) (count pop)))
       :average-genome-length (float (/ (reduce + (map count (map :plushy pop))) (count pop)))
-      :average-total-error   (float (/ (reduce + (map :total-error pop)) (count pop)))})
-    (println)))
+      :average-total-error   (float (/ (reduce + (map :total-error pop)) (count pop)))})))
 
 (defn cleanup
   []
