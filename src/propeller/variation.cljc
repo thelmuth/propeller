@@ -252,10 +252,14 @@ The function `new-individual` returns a new individual produced by selection and
 (defn new-individual
   "Returns a new individual produced by selection and variation of
   individuals in the population."
-  [pop argmap]
-  (let [umad-parent (selection/select-parent pop argmap)
-        parent-ind (:index umad-parent)] ;this is a hack to log hyperselection, only works for umad
-    {:plushy
+  [pop index argmap]
+  (let [;umad-parent (selection/select-parent pop argmap)
+        ;parent-ind (:index umad-parent)] ;this is a hack to log hyperselection, only works for umad
+        parent-from-umad (selection/select-parent pop argmap)]
+    {:parent (:id parent-from-umad)
+     :id (list (inc (first (:id parent-from-umad)))
+               index)
+     :plushy
      (let [r (rand)
            op (loop [accum 0.0
                      ops-probs (vec (:variation argmap))]
@@ -290,7 +294,7 @@ The function `new-individual` returns a new individual produced by selection and
          :umad ;; uniform mutation by addition and deleted, see uniform-deletion for the
                ;; adjustment that makes this size neutral on average
          (let [rate (utils/onenum (:umad-rate argmap))]
-           (-> (:plushy (selection/select-parent pop argmap))
+           (-> (:plushy parent-from-umad)
                (uniform-addition (:instructions argmap) rate)
                (uniform-deletion rate)))
        ;

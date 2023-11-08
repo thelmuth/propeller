@@ -21,6 +21,8 @@
 (defn report
   "Reports information each generation."
   [evaluations pop generation argmap training-data]
+  (doseq [ind pop]
+    (prn (select-keys ind [:id :parent :errors])))
   (let [best (first pop)]
     (clojure.pprint/pprint
      {:generation            generation
@@ -60,7 +62,9 @@
   (loop [generation 0
          evaluations 0
          population (utils/pmapallv
-                     (fn [_] {:plushy (genome/make-random-plushy instructions max-initial-plushy-size)}) 
+                     (fn [index] {:plushy (genome/make-random-plushy instructions max-initial-plushy-size)
+                                  :id (list generation index)
+                                  :parent nil}) 
                      (range population-size) 
                      argmap)
          indexed-training-data (if downsample? (downsample/assign-indices-to-data (downsample/initialize-case-distances argmap) argmap) (:training-data argmap))]
@@ -129,11 +133,11 @@
                      (let [reindexed-pop (hyperselection/reindex-pop evaluated-pop argmap)] ; give every individual an index for hyperselection loggin
                        (hyperselection/log-hyperselection-and-ret
                         (if (:elitism argmap)
-                          (conj (utils/pmapallv (fn [_] (variation/new-individual reindexed-pop argmap))
+                          (conj (utils/pmapallv (fn [index] (variation/new-individual reindexed-pop index argmap))
                                                 (range (dec population-size))
                                                 argmap)
                                 (first reindexed-pop))         ;elitism maintains the most-fit individual
-                          (utils/pmapallv (fn [_] (variation/new-individual reindexed-pop argmap))
+                          (utils/pmapallv (fn [index] (variation/new-individual reindexed-pop index argmap))
                                           (range population-size)
                                           argmap))))
                      (if downsample?
