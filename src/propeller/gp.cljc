@@ -5,7 +5,6 @@
             [propeller.simplification :as simplification]
             [propeller.variation :as variation]
             [propeller.downsample :as downsample]
-            [propeller.hyperselection :as hyperselection]
             [propeller.push.instructions.bool]
             [propeller.push.instructions.character]
             [propeller.push.instructions.code]
@@ -44,7 +43,7 @@
   #?(:clj (shutdown-agents))
   nil)
 
-(defn gp
+(defn gp-loop
   "Main GP loop."
   [{:keys [population-size max-generations error-function instructions
            max-initial-plushy-size solution-error-threshold ds-parent-rate ds-parent-gens dont-end ids-type downsample?]
@@ -129,19 +128,39 @@
         :else (recur (inc generation)
                      (+ evaluations (* population-size (count training-data)) ;every member evaluated on the current sample
                         (if (zero? (mod generation ds-parent-gens)) (* (count parent-reps) (- (count indexed-training-data) (count training-data))) 0) ; the parent-reps not evaluted already on down-sample
-                        (if best-individual-passes-ds (- (count indexed-training-data) (count training-data)) 0)) ; if we checked for generalization or not
-                     (let [reindexed-pop (hyperselection/reindex-pop evaluated-pop argmap)] ; give every individual an index for hyperselection loggin
-                       (hyperselection/log-hyperselection-and-ret
-                        (if (:elitism argmap)
-                          (conj (utils/pmapallv (fn [index] (variation/new-individual reindexed-pop index argmap))
+                        (if best-individual-passes-ds (- (count indexed-training-data) (count training-data)) 0)) ; if we checked for generalization or not  
+                     (if (:elitism argmap)
+                          (conj (utils/pmapallv (fn [index] (variation/new-individual evaluated-pop index argmap))
                                                 (range (dec population-size))
                                                 argmap)
-                                (first reindexed-pop))         ;elitism maintains the most-fit individual
-                          (utils/pmapallv (fn [index] (variation/new-individual reindexed-pop index argmap))
+                                (first evaluated-pop))         ;elitism maintains the most-fit individual
+                          (utils/pmapallv (fn [index] (variation/new-individual evaluated-pop index argmap))
                                           (range population-size)
-                                          argmap))))
+                                          argmap))
                      (if downsample?
                        (if (zero? (mod generation ds-parent-gens))
                          (downsample/update-case-distances rep-evaluated-pop indexed-training-data indexed-training-data ids-type (/ solution-error-threshold (count indexed-training-data))) ; update distances every ds-parent-gens generations
                          indexed-training-data)
                        indexed-training-data))))))
+
+(defn gp
+  "Top-level gp function. Calls gp-loop with possibly-adjusted arguments."
+  [argmap]
+  (let [adjust-for-autoconstructive-crossover
+        (fn [args]
+          (let [prob (:autoconstructive-crossover (:variation args))
+                n (:autoconstructive-crossover-enrichment args)]
+            (if (and prob (> prob 0))
+              (update args :instructions concat (repeat (or n 1) :gene))
+              args)))
+        ;
+        adjust-for-ah-umad
+        (fn [args]
+          (let [prob (:ah-umad (:variation args))
+                n (:ah-umad-enrichment args)]
+            (if (and prob (> prob 0))
+              (update args :instructions concat (flatten (repeat (or n 1) [:vary :protect])))
+              args)))]
+    (gp-loop (-> argmap
+                 (adjust-for-autoconstructive-crossover)
+                 (adjust-for-ah-umad)))))
